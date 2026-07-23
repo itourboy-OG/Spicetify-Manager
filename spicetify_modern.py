@@ -19,6 +19,7 @@ from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 from packaging.version import InvalidVersion, Version
+from PIL import Image
 
 
 ctk.set_appearance_mode("dark")
@@ -27,7 +28,7 @@ ctk.set_default_color_theme("blue")
 
 class SpicetifyManager(ctk.CTk):
     APP_NAME = "Spicetify Manager"
-    APP_VERSION = "2.1"
+    APP_VERSION = "2.1.0"
     APP_VERSION_FULL = "2.1.0"
     SPICETIFY_INSTALL_SCRIPT = (
         "https://raw.githubusercontent.com/spicetify/cli/main/install.ps1"
@@ -148,15 +149,25 @@ class SpicetifyManager(ctk.CTk):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
 
+        icon_path = os.path.join(self.resource_dir, "icon.ico")
+        with Image.open(icon_path) as icon_source:
+            brand_icon = icon_source.convert("RGBA")
+        self.sidebar_logo_image = ctk.CTkImage(
+            light_image=brand_icon,
+            dark_image=brand_icon,
+            size=(42, 42),
+        )
+        self.sidebar_identity_image = ctk.CTkImage(
+            light_image=brand_icon,
+            dark_image=brand_icon,
+            size=(34, 34),
+        )
         ctk.CTkLabel(
             self.sidebar,
-            text="SB",
+            text="",
+            image=self.sidebar_logo_image,
             width=42,
             height=42,
-            corner_radius=13,
-            fg_color=self.GREEN,
-            text_color="#07130B",
-            font=ctk.CTkFont("Segoe UI", 17, "bold"),
         ).place(x=22, y=24)
         ctk.CTkLabel(
             self.sidebar,
@@ -212,13 +223,10 @@ class SpicetifyManager(ctk.CTk):
         self.sidebar_identity.place(x=20, rely=1.0, y=-112)
         ctk.CTkLabel(
             self.sidebar_identity,
-            text="SB",
+            text="",
+            image=self.sidebar_identity_image,
             width=34,
             height=34,
-            corner_radius=10,
-            fg_color=self.GREEN,
-            text_color="#07130B",
-            font=ctk.CTkFont("Segoe UI", 12, "bold"),
         ).place(x=14, y=26)
         ctk.CTkLabel(
             self.sidebar_identity,

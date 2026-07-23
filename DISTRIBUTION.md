@@ -1,4 +1,4 @@
-# Spicetify Manager v2.1 distribution guide
+# Spicetify Manager v2.1.0 distribution guide
 
 ## What can be shared now
 
