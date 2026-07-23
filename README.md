@@ -9,6 +9,7 @@ easy to understand.
 
 - Detects desktop Spotify, Microsoft Store Spotify, and Spicetify
 - Installs or upgrades the official Spicetify CLI
+- Detects, installs, and safely updates the official Spicetify Marketplace
 - Creates backups and applies Spicetify after Spotify updates
 - Updates the active theme and restores Spotify when needed
 - Safely removes Spicetify from Spotify or fully uninstalls it
@@ -78,7 +79,7 @@ build-installer.bat
 The finished installer is created in:
 
 ```text
-installer-output\Spicetify-Manager-v2.3.0-Setup.exe
+installer-output\Spicetify-Manager-v2.3.1-Setup.exe
 ```
 
 The build supports optional Authenticode signing through a certificate installed

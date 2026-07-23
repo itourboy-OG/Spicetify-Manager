@@ -20,12 +20,12 @@ if not exist "%ISCC%" (
 "%ISCC%" "%~dp0SpicetifyManager.iss"
 if errorlevel 1 goto :error
 
-call :sign_file "%~dp0installer-output\Spicetify-Manager-v2.3.0-Setup.exe"
+call :sign_file "%~dp0installer-output\Spicetify-Manager-v2.3.1-Setup.exe"
 if errorlevel 1 goto :error
 
 echo.
 echo Installer build complete:
-echo %~dp0installer-output\Spicetify-Manager-v2.3.0-Setup.exe
+echo %~dp0installer-output\Spicetify-Manager-v2.3.1-Setup.exe
 if not defined SIGN_CERT_SHA1 echo Note: build is unsigned because SIGN_CERT_SHA1 was not set.
 exit /b 0
 

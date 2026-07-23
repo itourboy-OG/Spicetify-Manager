@@ -1,5 +1,5 @@
 #define MyAppName "Spicetify Manager"
-#define MyAppVersion "2.3.0"
+#define MyAppVersion "2.3.1"
 #define MyAppPublisher "SauceBoyz"
 #define MyAppURL "https://github.com/itourboy-OG/Spicetify-Manager"
 #define MyAppExeName "Spicetify Manager.exe"
@@ -20,7 +20,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=installer-output
-OutputBaseFilename=Spicetify-Manager-v2.3.0-Setup
+OutputBaseFilename=Spicetify-Manager-v2.3.1-Setup
 SetupIconFile=icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/max
@@ -29,7 +29,7 @@ WizardStyle=modern
 CloseApplications=yes
 RestartApplications=no
 SetupLogging=yes
-VersionInfoVersion=2.3.0.0
+VersionInfoVersion=2.3.1.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} installer
 VersionInfoProductName={#MyAppName}
