@@ -222,6 +222,7 @@ __marimo__/
 .vs/
 .vscode/
 release/
+installer-output/
 logs/
 settings.json
 *.zip

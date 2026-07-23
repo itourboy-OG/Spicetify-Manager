@@ -28,8 +28,11 @@ ctk.set_default_color_theme("blue")
 
 class SpicetifyManager(ctk.CTk):
     APP_NAME = "Spicetify Manager"
-    APP_VERSION = "2.1.0"
-    APP_VERSION_FULL = "2.1.0"
+    APP_VERSION = "2.2.0"
+    APP_VERSION_FULL = "2.2.0"
+    UI_FONT = "Verdana"
+    MONO_FONT = "Consolas"
+    PROGRESS_WIDTH = 220
     SPICETIFY_INSTALL_SCRIPT = (
         "https://raw.githubusercontent.com/spicetify/cli/main/install.ps1"
     )
@@ -105,11 +108,7 @@ class SpicetifyManager(ctk.CTk):
             pass
 
         self.log_dir = os.path.join(self.data_dir, "logs")
-        os.makedirs(self.log_dir, exist_ok=True)
-        self.current_logfile = os.path.join(
-            self.log_dir, f"session_{datetime.now():%Y%m%d_%H%M%S}.log"
-        )
-        open(self.current_logfile, "a", encoding="utf-8").close()
+        self.current_logfile = None
 
         self.ui_queue = queue.Queue()
         self.log_lock = threading.Lock()
@@ -121,6 +120,9 @@ class SpicetifyManager(ctk.CTk):
         self.spinner_frame = 0
         self.progress_value = 0.0
         self.progress_animation_generation = 0
+        self.page_animation_generation = 0
+        self.nav_animation_generation = 0
+        self.progress_collapse_generation = 0
         self.status_reset_job = None
 
         self.grid_columnconfigure(1, weight=1)
@@ -173,13 +175,13 @@ class SpicetifyManager(ctk.CTk):
             self.sidebar,
             text="SauceBoyz",
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 19, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 19, "bold"),
         ).place(x=76, y=26)
         ctk.CTkLabel(
             self.sidebar,
             text="SPICETIFY MANAGER",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 9, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 11, "bold"),
         ).place(x=77, y=49)
 
         self.nav_indicator = ctk.CTkFrame(
@@ -205,7 +207,7 @@ class SpicetifyManager(ctk.CTk):
                 fg_color="transparent",
                 hover_color=self.CARD_HOVER,
                 text_color=self.MUTED,
-                font=ctk.CTkFont("Segoe UI", 13, "bold"),
+                font=ctk.CTkFont(self.UI_FONT, 13, "bold"),
                 command=lambda page=key: self.show_page(page),
             )
             button.place(x=16, y=y)
@@ -232,13 +234,13 @@ class SpicetifyManager(ctk.CTk):
             self.sidebar_identity,
             text=self.APP_NAME,
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 12, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
         ).place(x=57, y=25)
         ctk.CTkLabel(
             self.sidebar_identity,
             text=f"Version v{self.APP_VERSION}",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 11),
+            font=ctk.CTkFont(self.UI_FONT, 12),
         ).place(x=57, y=50)
 
     def _build_workspace(self):
@@ -258,14 +260,14 @@ class SpicetifyManager(ctk.CTk):
             self.topbar,
             text="Dashboard",
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 28, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 28, "bold"),
         )
         self.page_title.grid(row=0, column=0, sticky="sw", pady=(22, 0))
         self.page_subtitle = ctk.CTkLabel(
             self.topbar,
             text="Everything you need to keep Spicetify healthy.",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 12),
+            font=ctk.CTkFont(self.UI_FONT, 12),
         )
         self.page_subtitle.grid(row=1, column=0, sticky="nw")
 
@@ -276,7 +278,7 @@ class SpicetifyManager(ctk.CTk):
             corner_radius=17,
             fg_color=self.CARD,
             text_color=self.GREEN,
-            font=ctk.CTkFont("Segoe UI", 11, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
         )
         self.top_status.grid(row=0, column=1, rowspan=2, sticky="e", pady=(22, 0))
 
@@ -317,20 +319,20 @@ class SpicetifyManager(ctk.CTk):
             hero,
             text="SPICETIFY STATUS",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 10, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 11, "bold"),
         ).grid(row=0, column=0, sticky="w", padx=24, pady=(20, 0))
         self.hero_title = ctk.CTkLabel(
             hero,
             text="Checking your installation…",
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 23, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 23, "bold"),
         )
         self.hero_title.grid(row=1, column=0, sticky="w", padx=24, pady=(3, 0))
         self.hero_detail = ctk.CTkLabel(
             hero,
             text="This only takes a moment.",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 12),
+            font=ctk.CTkFont(self.UI_FONT, 12),
         )
         self.hero_detail.grid(row=2, column=0, sticky="w", padx=24, pady=(2, 18))
         self.check_button = ctk.CTkButton(
@@ -343,7 +345,7 @@ class SpicetifyManager(ctk.CTk):
             hover_color=self.BORDER,
             border_width=1,
             border_color=self.BORDER,
-            font=ctk.CTkFont("Segoe UI", 12, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
             command=self.check_for_updates,
         )
         self.check_button.grid(row=0, column=1, rowspan=3, padx=24)
@@ -383,7 +385,7 @@ class SpicetifyManager(ctk.CTk):
             console_card,
             text="Command console",
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 15, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 15, "bold"),
         ).grid(row=0, column=0, sticky="w", padx=20, pady=(15, 8))
 
         controls = ctk.CTkFrame(console_card, fg_color="transparent")
@@ -397,7 +399,7 @@ class SpicetifyManager(ctk.CTk):
             border_color=self.BORDER,
             fg_color=self.BG,
             placeholder_text="Enter a command, for example: spicetify config",
-            font=ctk.CTkFont("Cascadia Mono", 11),
+            font=ctk.CTkFont(self.MONO_FONT, 12),
         )
         self.command_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.command_entry.bind("<Return>", lambda _event: self.run_custom_command())
@@ -409,7 +411,7 @@ class SpicetifyManager(ctk.CTk):
             corner_radius=11,
             fg_color=self.BLUE,
             hover_color=self.BLUE_HOVER,
-            font=ctk.CTkFont("Segoe UI", 12, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
             command=self.run_custom_command,
         )
         self.run_button.grid(row=0, column=1, padx=4)
@@ -436,7 +438,7 @@ class SpicetifyManager(ctk.CTk):
             border_width=0,
             fg_color="#080C15",
             text_color="#C8D4EA",
-            font=ctk.CTkFont("Cascadia Mono", 11),
+            font=ctk.CTkFont(self.MONO_FONT, 12),
             wrap="word",
         )
         self.console.grid(row=2, column=0, sticky="nsew", padx=18)
@@ -450,7 +452,7 @@ class SpicetifyManager(ctk.CTk):
             footer,
             text="Idle",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 11),
+            font=ctk.CTkFont(self.UI_FONT, 12),
         )
         self.operation_label.grid(row=0, column=0, sticky="w")
         self.progress = ctk.CTkProgressBar(
@@ -468,9 +470,11 @@ class SpicetifyManager(ctk.CTk):
             text="0%",
             width=42,
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 11, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
         )
         self.progress_percent.grid(row=0, column=2, sticky="e", padx=(10, 0))
+        self.progress.grid_remove()
+        self.progress_percent.grid_remove()
         return page
 
     def _action_card(self, parent, title, detail, accent, command):
@@ -495,13 +499,13 @@ class SpicetifyManager(ctk.CTk):
             card,
             text=title,
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 13, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 13, "bold"),
         ).grid(row=0, column=1, sticky="sw", pady=(16, 0))
         ctk.CTkLabel(
             card,
             text=detail,
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 10),
+            font=ctk.CTkFont(self.UI_FONT, 11),
         ).grid(row=1, column=1, sticky="nw", pady=(0, 15))
         ctk.CTkButton(
             card,
@@ -536,7 +540,7 @@ class SpicetifyManager(ctk.CTk):
             toolbar,
             text="Session",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 11, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
         ).grid(row=0, column=0, padx=(18, 8), pady=14)
         self.log_session = ctk.CTkComboBox(
             toolbar,
@@ -578,7 +582,7 @@ class SpicetifyManager(ctk.CTk):
             border_color=self.BORDER,
             fg_color=self.CARD,
             text_color="#CAD7EE",
-            font=ctk.CTkFont("Cascadia Mono", 11),
+            font=ctk.CTkFont(self.MONO_FONT, 12),
             wrap="word",
         )
         self.logs_text.grid(row=1, column=0, sticky="nsew")
@@ -650,7 +654,7 @@ class SpicetifyManager(ctk.CTk):
             border_color=self.BORDER,
             fg_color=self.CARD,
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 13),
+            font=ctk.CTkFont(self.UI_FONT, 13),
             wrap="word",
             padx=24,
             pady=20,
@@ -711,34 +715,34 @@ Official documentation
             overview,
             text="SYSTEM CHECK",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 10, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 11, "bold"),
         ).grid(row=0, column=0, columnspan=2, sticky="w", padx=20, pady=(15, 3))
         self.spotify_setup_status = ctk.CTkLabel(
             overview,
             text="◐  Checking Spotify…",
             text_color=self.ORANGE,
-            font=ctk.CTkFont("Segoe UI", 14, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 14, "bold"),
         )
         self.spotify_setup_status.grid(row=1, column=0, sticky="w", padx=20)
         self.spicetify_setup_status = ctk.CTkLabel(
             overview,
             text="◐  Checking Spicetify…",
             text_color=self.ORANGE,
-            font=ctk.CTkFont("Segoe UI", 14, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 14, "bold"),
         )
         self.spicetify_setup_status.grid(row=1, column=1, sticky="w", padx=20)
         self.spotify_setup_detail = ctk.CTkLabel(
             overview,
             text="Looking for the desktop application",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 10),
+            font=ctk.CTkFont(self.UI_FONT, 11),
         )
         self.spotify_setup_detail.grid(row=2, column=0, sticky="w", padx=20)
         self.spicetify_setup_detail = ctk.CTkLabel(
             overview,
             text="Looking for the command-line tool",
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 10),
+            font=ctk.CTkFont(self.UI_FONT, 11),
         )
         self.spicetify_setup_detail.grid(row=2, column=1, sticky="w", padx=20)
 
@@ -818,13 +822,13 @@ Official documentation
             card,
             text=title,
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 13, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 13, "bold"),
         ).grid(row=0, column=0, sticky="sw", padx=20, pady=(12, 0))
         ctk.CTkLabel(
             card,
             text=detail,
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 10),
+            font=ctk.CTkFont(self.UI_FONT, 11),
         ).grid(row=1, column=0, sticky="nw", padx=20, pady=(0, 11))
         button = ctk.CTkButton(
             card,
@@ -837,7 +841,7 @@ Official documentation
             border_width=1,
             border_color=accent,
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 11, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
             command=command,
         )
         button.grid(row=0, column=1, rowspan=2, padx=18)
@@ -978,13 +982,13 @@ Official documentation
             card,
             text=title,
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 14, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 14, "bold"),
         ).grid(row=0, column=0, sticky="sw", padx=20, pady=(17, 0))
         ctk.CTkLabel(
             card,
             text=detail,
             text_color=self.MUTED,
-            font=ctk.CTkFont("Segoe UI", 11),
+            font=ctk.CTkFont(self.UI_FONT, 12),
         ).grid(row=1, column=0, sticky="nw", padx=20, pady=(1, 10))
         return card
 
@@ -1005,6 +1009,8 @@ Official documentation
         }
         old_page = self.pages.get(self.current_page)
         new_page = self.pages[page_name]
+        self.page_animation_generation += 1
+        transition_generation = self.page_animation_generation
         if old_page:
             old_page.place_forget()
 
@@ -1023,8 +1029,8 @@ Official documentation
         self.current_page = page_name
 
         if animate and self.animations_enabled:
-            new_page.place(x=26, y=0, relwidth=1, relheight=1)
-            self._slide_page(new_page, 26)
+            new_page.place(x=14, y=0, relwidth=1, relheight=1)
+            self._slide_page(new_page, 14, transition_generation)
         else:
             new_page.place(x=0, y=0, relwidth=1, relheight=1)
         if page_name == "logs":
@@ -1032,18 +1038,31 @@ Official documentation
         elif page_name == "setup":
             self.refresh_system_detection()
 
-    def _slide_page(self, page, x):
-        if not page.winfo_exists() or page != self.pages.get(self.current_page):
+    def _slide_page(self, page, x, generation):
+        if (
+            generation != self.page_animation_generation
+            or not page.winfo_exists()
+            or page != self.pages.get(self.current_page)
+        ):
             return
-        next_x = max(0, int(x * 0.62) - 1)
+        next_x = max(0, int(x * 0.52) - 1)
         page.place_configure(x=next_x)
         if next_x > 0:
-            self.after(16, lambda: self._slide_page(page, next_x))
+            self.after(
+                16, lambda: self._slide_page(page, next_x, generation)
+            )
 
     def _animate_indicator(self, target):
+        self.nav_animation_generation += 1
+        generation = self.nav_animation_generation
         if not self.animations_enabled:
             self.nav_indicator_y = target
             self.nav_indicator.place_configure(y=target)
+            return
+        self._indicator_step(target, generation)
+
+    def _indicator_step(self, target, generation):
+        if generation != self.nav_animation_generation:
             return
         delta = target - self.nav_indicator_y
         if abs(delta) <= 1:
@@ -1052,7 +1071,7 @@ Official documentation
             return
         self.nav_indicator_y += delta * 0.28
         self.nav_indicator.place_configure(y=int(self.nav_indicator_y))
-        self.after(16, lambda: self._animate_indicator(target))
+        self.after(16, lambda: self._indicator_step(target, generation))
 
     def _set_progress(self, target, animate=None):
         target = max(0.0, min(1.0, target))
@@ -1082,6 +1101,43 @@ Official documentation
         self.progress.set(self.progress_value)
         self.progress_percent.configure(text=f"{round(self.progress_value * 100)}%")
 
+    def _show_progress(self):
+        self.progress_collapse_generation += 1
+        self.progress.configure(width=self.PROGRESS_WIDTH, progress_color=self.GREEN)
+        self.progress.grid()
+        self.progress_percent.grid()
+
+    def _collapse_progress(self):
+        self.progress_collapse_generation += 1
+        generation = self.progress_collapse_generation
+        if not self.animations_enabled:
+            self._finish_progress_collapse(generation)
+            return
+
+        def step(frame):
+            if generation != self.progress_collapse_generation:
+                return
+            if self.active_operation:
+                return
+            ratio = min(1.0, frame / 10)
+            eased = 1 - (1 - ratio) ** 3
+            width = max(1, round(self.PROGRESS_WIDTH * (1 - eased)))
+            self.progress.configure(width=width)
+            if frame < 10:
+                self.after(18, lambda: step(frame + 1))
+            else:
+                self._finish_progress_collapse(generation)
+
+        step(0)
+
+    def _finish_progress_collapse(self, generation):
+        if generation != self.progress_collapse_generation:
+            return
+        self.progress.grid_remove()
+        self.progress_percent.grid_remove()
+        self.progress.configure(width=self.PROGRESS_WIDTH)
+        self._set_progress(0, animate=False)
+
     def show_toast(self, text, color=None):
         color = color or self.GREEN
         toast = ctk.CTkFrame(
@@ -1093,7 +1149,7 @@ Official documentation
             border_width=1,
             border_color=color,
         )
-        toast.place(relx=1.0, rely=1.0, x=330, y=-24, anchor="se")
+        toast.place(relx=1.0, rely=1.0, x=330, y=-86, anchor="se")
         ctk.CTkLabel(
             toast,
             text="●",
@@ -1104,7 +1160,7 @@ Official documentation
             toast,
             text=text,
             text_color=self.TEXT,
-            font=ctk.CTkFont("Segoe UI", 12, "bold"),
+            font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
         ).place(x=43, y=18)
 
         def move(x, target, finished):
@@ -1296,11 +1352,14 @@ Official documentation
             return
 
         self.active_operation = "Preparing Spicetify installer"
+        self._cancel_status_reset()
+        self._show_progress()
         self.operation_label.configure(
             text="Downloading official installer…", text_color=self.TEXT
         )
         self.top_status.configure(text="  ◐  Preparing install  ", text_color=self.BLUE)
         self.run_button.configure(state="disabled")
+        self._set_progress(0, animate=False)
         self._set_progress(0.08)
 
         def worker():
@@ -1586,6 +1645,7 @@ Official documentation
             return
         self.active_operation = label
         self._cancel_status_reset()
+        self._show_progress()
         self.operation_label.configure(text=label, text_color=self.TEXT)
         self.top_status.configure(text=f"  ◐  {label}  ", text_color=self.BLUE)
         self.run_button.configure(state="disabled")
@@ -1651,7 +1711,7 @@ Official documentation
             state="disabled", text_color=self.MUTED, border_color=self.BORDER
         )
         if return_code == 0:
-            self._set_progress(1.0)
+            self._set_progress(1.0, animate=False)
             self.operation_label.configure(text="Completed", text_color=self.GREEN)
             self.top_status.configure(text="  ●  Completed  ", text_color=self.GREEN)
             self._schedule_status_reset()
@@ -1684,13 +1744,23 @@ Official documentation
                 self._write_output(f"Cleanup step failed: {error}\n")
 
     def _write_output(self, text):
+        logfile = self._ensure_current_logfile()
         with self.log_lock:
             try:
-                with open(self.current_logfile, "a", encoding="utf-8") as log:
+                with open(logfile, "a", encoding="utf-8") as log:
                     log.write(text)
             except OSError:
                 pass
         self.ui_queue.put(lambda value=text: self._append_console(value))
+
+    def _ensure_current_logfile(self):
+        if self.current_logfile:
+            return self.current_logfile
+        os.makedirs(self.log_dir, exist_ok=True)
+        self.current_logfile = os.path.join(
+            self.log_dir, f"session_{datetime.now():%Y%m%d_%H%M%S}.log"
+        )
+        return self.current_logfile
 
     def _append_console(self, text):
         self.console.configure(state="normal")
@@ -1701,7 +1771,14 @@ Official documentation
     # ---------- logs and settings ----------
 
     def refresh_logs(self):
-        files = sorted(glob.glob(os.path.join(self.log_dir, "*.log")), reverse=True)
+        files = []
+        for path in glob.glob(os.path.join(self.log_dir, "*.log")):
+            try:
+                if os.path.getsize(path) > 0:
+                    files.append(path)
+            except OSError:
+                pass
+        files.sort(reverse=True)
         names = [os.path.basename(path) for path in files] or ["No logs"]
         self.log_session.configure(values=names)
         selection = self.log_session.get()
@@ -1736,7 +1813,7 @@ Official documentation
         self.logs_text.configure(state="disabled")
 
     def save_log_copy(self):
-        content = self.logs_text.get("1.0", "end").strip()
+        content = self.full_log_content.strip()
         if not content:
             self.show_toast("There is no log content to save", self.ORANGE)
             return
@@ -1786,7 +1863,9 @@ Official documentation
         if not path or not os.path.exists(path):
             self.show_toast("Select a log session first", self.ORANGE)
             return
-        if os.path.abspath(path) == os.path.abspath(self.current_logfile):
+        if self.current_logfile and os.path.abspath(path) == os.path.abspath(
+            self.current_logfile
+        ):
             messagebox.showinfo(
                 "Active session log",
                 "The active session log cannot be deleted while the manager is running. "
@@ -1808,6 +1887,7 @@ Official documentation
 
     def open_logs_folder(self):
         try:
+            os.makedirs(self.log_dir, exist_ok=True)
             os.startfile(self.log_dir)
         except OSError as error:
             messagebox.showerror("Open logs folder", str(error))
@@ -1853,6 +1933,8 @@ Official documentation
             self.status_reset_job = None
             if not self.active_operation:
                 self.top_status.configure(text="  ●  Ready  ", text_color=self.GREEN)
+                self.operation_label.configure(text="Idle", text_color=self.MUTED)
+                self._collapse_progress()
 
         self.status_reset_job = self.after(self.notification_duration_ms, reset)
 
