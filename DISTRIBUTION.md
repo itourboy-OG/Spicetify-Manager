@@ -1,8 +1,16 @@
-# Spicetify Manager v2.1.0 distribution guide
+# Spicetify Manager v2.2.0 distribution guide
 
 ## What can be shared now
 
-Run `build-release.bat`. The finished portable application is created at:
+Run `build-installer.bat`. The finished Windows installer is created at:
+
+`installer-output\Spicetify-Manager-v2.2.0-Setup.exe`
+
+The installer copies the complete application, creates Start Menu entries,
+offers a desktop shortcut by default, and registers a Windows uninstaller.
+Recipients do not need Python, CustomTkinter, or Pillow installed.
+
+For a portable build, run `build-release.bat`. The application is created at:
 
 `dist\Spicetify Manager\Spicetify Manager.exe`
 
@@ -10,7 +18,8 @@ Share the entire `Spicetify Manager` folder, preferably as a ZIP file. The
 official CustomTkinter packaging guidance uses a folder-based build because the
 UI library includes required fonts and theme data.
 
-Recipients do not need Python or CustomTkinter installed.
+Do not share the portable EXE by itself. It requires the adjacent `_internal`
+folder, which is why the installer is the recommended download.
 
 ## Enable application update checks
 
@@ -20,7 +29,7 @@ Recipients do not need Python or CustomTkinter installed.
    `"github_repo": "itourboy-OG/Spicetify-Manager"`
 
 3. Run `build-release.bat` again.
-4. On GitHub, create a release tagged with a semantic version such as `v2.1.0`.
+4. On GitHub, create a release tagged with a semantic version such as `v2.2.0`.
 5. Upload the new ZIP or installer to that release.
 
 The Settings page will compare the bundled app version with the latest GitHub
@@ -31,7 +40,7 @@ page for downloading.
 
 1. Test the portable folder on another Windows account or Windows Sandbox.
 2. Zip the complete `dist\Spicetify Manager` folder.
-3. Publish the ZIP on GitHub Releases.
+3. Publish the installer on GitHub Releases and optionally include the portable ZIP.
 4. Add screenshots and a short explanation that Spotify and Spicetify are
    independent third-party applications.
 5. Code-sign the executable before broad public distribution if possible.

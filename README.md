@@ -18,10 +18,14 @@ easy to understand.
 
 ## Download
 
-Portable Windows builds will be published on the
+Windows installers will be published on the
 [Releases page](https://github.com/itourboy-OG/Spicetify-Manager/releases).
-Download the newest ZIP, extract the complete folder, and run
-`Spicetify Manager.exe`.
+Download the newest `Setup.exe`, run it, and keep the desktop-shortcut option
+selected. The installer copies every required runtime file, adds Start Menu and
+desktop shortcuts, and includes a standard Windows uninstaller.
+
+Portable ZIP builds may also be provided. Keep every extracted file together;
+the EXE depends on the bundled runtime folder beside it.
 
 Windows may show a Microsoft Defender SmartScreen warning for unsigned community
 applications. Review the release source and build instructions before running
@@ -60,6 +64,20 @@ dist\Spicetify Manager\
 
 Share the entire folder, normally as a ZIP. See
 [DISTRIBUTION.md](DISTRIBUTION.md) for the release checklist and update process.
+
+## Build the Windows installer
+
+Install Inno Setup 6, then run:
+
+```bat
+build-installer.bat
+```
+
+The finished installer is created in:
+
+```text
+installer-output\Spicetify-Manager-v2.2.0-Setup.exe
+```
 
 ## Important
 
