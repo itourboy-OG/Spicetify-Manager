@@ -12,8 +12,10 @@ easy to understand.
 - Creates backups and applies Spicetify after Spotify updates
 - Updates the active theme and restores Spotify when needed
 - Safely removes Spicetify from Spotify or fully uninstalls it
+- Repairs Spicetify with a guided restore, backup, and apply sequence
 - Shows command progress, completion percentages, notifications, and logs
-- Checks GitHub Releases for newer versions of Spicetify Manager
+- Downloads and verifies application updates from the official GitHub release
+- Includes Standard, Large Text, and High Contrast accessibility modes
 - Stores settings and logs in the current user's local application-data folder
 
 ## Download
@@ -76,8 +78,11 @@ build-installer.bat
 The finished installer is created in:
 
 ```text
-installer-output\Spicetify-Manager-v2.2.0-Setup.exe
+installer-output\Spicetify-Manager-v2.3.0-Setup.exe
 ```
+
+The build supports optional Authenticode signing through a certificate installed
+in the Windows certificate store. See [CODE_SIGNING.md](CODE_SIGNING.md).
 
 ## Important
 
