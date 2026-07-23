@@ -1,10 +1,10 @@
-# Spicetify Manager v2.2.0 distribution guide
+# Spicetify Manager v2.3.0 distribution guide
 
 ## What can be shared now
 
 Run `build-installer.bat`. The finished Windows installer is created at:
 
-`installer-output\Spicetify-Manager-v2.2.0-Setup.exe`
+`installer-output\Spicetify-Manager-v2.3.0-Setup.exe`
 
 The installer copies the complete application, creates Start Menu entries,
 offers a desktop shortcut by default, and registers a Windows uninstaller.
@@ -28,8 +28,8 @@ folder, which is why the installer is the recommended download.
 
    `"github_repo": "itourboy-OG/Spicetify-Manager"`
 
-3. Run `build-release.bat` again.
-4. On GitHub, create a release tagged with a semantic version such as `v2.2.0`.
+3. Run `build-installer.bat` again.
+4. On GitHub, create a release tagged with a semantic version such as `v2.3.0`.
 5. Upload the new ZIP or installer to that release.
 
 The Settings page will compare the bundled app version with the latest GitHub

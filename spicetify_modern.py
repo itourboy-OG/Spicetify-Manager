@@ -1,5 +1,6 @@
 import getpass
 import glob
+import hashlib
 import json
 import os
 import platform
@@ -28,8 +29,8 @@ ctk.set_default_color_theme("blue")
 
 class SpicetifyManager(ctk.CTk):
     APP_NAME = "Spicetify Manager"
-    APP_VERSION = "2.2.0"
-    APP_VERSION_FULL = "2.2.0"
+    APP_VERSION = "2.3.0"
+    APP_VERSION_FULL = "2.3.0"
     UI_FONT = "Verdana"
     MONO_FONT = "Consolas"
     PROGRESS_WIDTH = 220
@@ -55,6 +56,7 @@ class SpicetifyManager(ctk.CTk):
         "animations_enabled": True,
         "notification_duration": "3 seconds",
         "always_on_top": False,
+        "accessibility_mode": "Standard",
     }
     NOTIFICATION_DURATIONS = {
         "2 seconds": 2000,
@@ -76,7 +78,6 @@ class SpicetifyManager(ctk.CTk):
         self.title("SauceBoyz · Spicetify Manager")
         self.geometry("1180x760")
         self.minsize(1000, 680)
-        self.configure(fg_color=self.BG)
 
         self.resource_dir = getattr(
             sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))
@@ -94,13 +95,19 @@ class SpicetifyManager(ctk.CTk):
         )
         self._migrate_legacy_settings()
         self.settings = self._load_settings()
+        self.accessibility_mode = self.settings["accessibility_mode"]
+        self._apply_accessibility_palette()
+        self.configure(fg_color=self.BG)
         self.animations_enabled = bool(self.settings["animations_enabled"])
         self.notification_duration_ms = self.NOTIFICATION_DURATIONS.get(
             self.settings["notification_duration"], 3000
         )
-        ctk.set_widget_scaling(
-            int(self.settings["interface_scale"].rstrip("%")) / 100
-        )
+        scale = int(self.settings["interface_scale"].rstrip("%")) / 100
+        if self.accessibility_mode == "Large text":
+            scale = 1.12
+        elif self.accessibility_mode == "High contrast":
+            scale = max(scale, 1.0)
+        ctk.set_widget_scaling(scale)
         self.attributes("-topmost", bool(self.settings["always_on_top"]))
         try:
             self.iconbitmap(os.path.join(self.resource_dir, "icon.ico"))
@@ -143,6 +150,23 @@ class SpicetifyManager(ctk.CTk):
             self.check_for_updates()
 
     # ---------- layout ----------
+
+    def _apply_accessibility_palette(self):
+        if self.accessibility_mode != "High contrast":
+            return
+        self.BG = "#000000"
+        self.SIDEBAR = "#05070B"
+        self.CARD = "#0B111C"
+        self.CARD_HOVER = "#17243A"
+        self.BORDER = "#8EA6D1"
+        self.TEXT = "#FFFFFF"
+        self.MUTED = "#D6DFEE"
+        self.BLUE = "#78A6FF"
+        self.BLUE_HOVER = "#A8C5FF"
+        self.GREEN = "#43F57B"
+        self.GREEN_HOVER = "#72FF9C"
+        self.ORANGE = "#FFD166"
+        self.RED = "#FF7188"
 
     def _build_sidebar(self):
         self.sidebar = ctk.CTkFrame(
@@ -779,9 +803,20 @@ Official documentation
         )
         self.first_setup_button = first_setup
 
-        restore = self._setup_action_card(
+        repair = self._setup_action_card(
             page,
             4,
+            "Repair Spicetify",
+            "Restores Spotify, creates a fresh backup, and reapplies Spicetify.",
+            self.BLUE,
+            "Repair",
+            self.repair_spicetify,
+        )
+        self.repair_spicetify_button = repair
+
+        restore = self._setup_action_card(
+            page,
+            5,
             "Remove from Spotify",
             "Restores vanilla Spotify but keeps Spicetify and your configuration.",
             self.ORANGE,
@@ -792,7 +827,7 @@ Official documentation
 
         uninstall = self._setup_action_card(
             page,
-            5,
+            6,
             "Fully uninstall Spicetify",
             "Restores Spotify, then removes Spicetify's files and configuration.",
             self.RED,
@@ -851,24 +886,24 @@ Official documentation
         page = self._base_page()
         page.grid_columnconfigure(0, weight=1)
 
-        appearance = self._settings_card(
+        accessibility = self._settings_card(
             page,
-            "Interface scale",
-            "Adjust the size of controls and text without changing Windows settings.",
+            "Accessibility mode",
+            "Choose the standard design, larger text, or stronger color contrast.",
         )
-        appearance.grid(row=0, column=0, sticky="ew", pady=(0, 14))
-        self.theme_menu = ctk.CTkOptionMenu(
-            appearance,
-            values=["90%", "100%", "110%"],
-            width=130,
+        accessibility.grid(row=0, column=0, sticky="ew", pady=(0, 14))
+        self.accessibility_menu = ctk.CTkOptionMenu(
+            accessibility,
+            values=["Standard", "Large text", "High contrast"],
+            width=160,
             height=38,
             corner_radius=10,
             fg_color=self.BLUE,
             button_color=self.BLUE_HOVER,
-            command=self.change_scale,
+            command=self.change_accessibility_mode,
         )
-        self.theme_menu.set(self.settings["interface_scale"])
-        self.theme_menu.grid(row=0, column=1, rowspan=2, padx=20)
+        self.accessibility_menu.set(self.accessibility_mode)
+        self.accessibility_menu.grid(row=0, column=1, rowspan=2, padx=20)
 
         motion = self._settings_card(
             page,
@@ -954,8 +989,8 @@ Official documentation
         app_updates.grid(row=5, column=0, sticky="ew", pady=(14, 0))
         self.app_update_button = ctk.CTkButton(
             app_updates,
-            text="Check now",
-            width=110,
+            text="Check & update",
+            width=140,
             height=38,
             corner_radius=10,
             fg_color=self.CARD_HOVER,
@@ -1303,6 +1338,7 @@ Official documentation
             self.install_spicetify_button.configure(state="disabled", text="Installed")
             for button in (
                 self.first_setup_button,
+                self.repair_spicetify_button,
                 self.remove_modifications_button,
                 self.full_uninstall_button,
             ):
@@ -1317,6 +1353,7 @@ Official documentation
             self.install_spicetify_button.configure(state="normal", text="Install")
             for button in (
                 self.first_setup_button,
+                self.repair_spicetify_button,
                 self.remove_modifications_button,
                 self.full_uninstall_button,
             ):
@@ -1455,6 +1492,40 @@ Official documentation
         self.show_toast("Spicetify was fully uninstalled")
         self.after(300, self.refresh_system_detection)
 
+    def repair_spicetify(self):
+        spotify = self._detect_spotify()
+        if not spotify["supported"] or not self.get_spicetify_version():
+            messagebox.showwarning(
+                "Repair unavailable",
+                "Spotify desktop and Spicetify must both be installed before a repair.",
+            )
+            return
+        if not messagebox.askyesno(
+            "Repair Spicetify",
+            "This repair will restore Spotify, create a fresh backup, and reapply "
+            "Spicetify. Your themes and extensions will be kept.\n\nContinue?",
+        ):
+            return
+        self.run_operation(
+            "Repair 1 of 3 · Restoring Spotify",
+            ["spicetify", "restore"],
+            on_success=lambda: self.after(250, self._repair_backup),
+        )
+
+    def _repair_backup(self):
+        self.run_operation(
+            "Repair 2 of 3 · Creating backup",
+            ["spicetify", "backup"],
+            on_success=lambda: self.after(250, self._repair_apply),
+        )
+
+    def _repair_apply(self):
+        self.run_operation(
+            "Repair 3 of 3 · Applying Spicetify",
+            ["spicetify", "apply"],
+            on_success=self.refresh_system_detection,
+        )
+
     # ---------- application updates ----------
 
     def check_app_updates(self):
@@ -1478,6 +1549,7 @@ Official documentation
                 )
                 with urllib.request.urlopen(request, timeout=12) as response:
                     release = json.load(response)
+                release["_repository"] = repository
                 self.ui_queue.put(lambda: self._show_app_update_result(release))
             except (OSError, ValueError, urllib.error.URLError) as error:
                 self.ui_queue.put(lambda problem=error: self._show_app_update_error(problem))
@@ -1485,7 +1557,7 @@ Official documentation
         threading.Thread(target=worker, daemon=True).start()
 
     def _show_unconfigured_update_feed(self):
-        self.app_update_button.configure(state="normal", text="Check now")
+        self.app_update_button.configure(state="normal", text="Check & update")
         messagebox.showinfo(
             "Application updates",
             "The update checker is ready, but it needs your future GitHub repository "
@@ -1493,7 +1565,7 @@ Official documentation
         )
 
     def _show_app_update_result(self, release):
-        self.app_update_button.configure(state="normal", text="Check now")
+        self.app_update_button.configure(state="normal", text="Check & update")
         latest_text = str(release.get("tag_name", "")).removeprefix("v")
         try:
             newer = Version(latest_text) > Version(self.APP_VERSION_FULL)
@@ -1503,15 +1575,145 @@ Official documentation
         if not newer:
             self.show_toast(f"{self.APP_NAME} is up to date")
             return
+        asset = self._find_update_installer(release)
+        if not asset:
+            if messagebox.askyesno(
+                "Application update available",
+                f"{self.APP_NAME} v{latest_text} is available, but this release "
+                "does not include a verified Setup installer.\n\nOpen the official "
+                "release page instead?",
+            ):
+                webbrowser.open(release.get("html_url", ""))
+            return
         if messagebox.askyesno(
             "Application update available",
             f"{self.APP_NAME} v{latest_text} is available.\n\n"
-            "Open the official release page to download it?",
+            "Download the verified installer and update automatically now?",
         ):
-            webbrowser.open(release.get("html_url", ""))
+            self._download_app_update(latest_text, asset)
+
+    @staticmethod
+    def _find_update_installer(release):
+        repository = str(release.get("_repository", "")).strip()
+        expected_prefix = f"https://github.com/{repository}/releases/download/"
+        for asset in release.get("assets", []):
+            name = str(asset.get("name", ""))
+            url = str(asset.get("browser_download_url", ""))
+            digest = str(asset.get("digest", ""))
+            if (
+                re.fullmatch(
+                    r"Spicetify-Manager-v[0-9A-Za-z._-]+-Setup\.exe",
+                    name,
+                    flags=re.IGNORECASE,
+                )
+                and url.startswith(expected_prefix)
+                and re.fullmatch(r"sha256:[0-9a-fA-F]{64}", digest)
+            ):
+                return asset
+        return None
+
+    def _download_app_update(self, version, asset):
+        if self.active_operation:
+            self.show_toast("Another operation is already running", self.ORANGE)
+            return
+        self.active_operation = "Downloading application update"
+        self._cancel_status_reset()
+        self._show_progress()
+        self._set_progress(0, animate=False)
+        self.operation_label.configure(
+            text=f"Downloading v{version}…", text_color=self.TEXT
+        )
+        self.top_status.configure(text="  ◐  Downloading update  ", text_color=self.BLUE)
+        self.app_update_button.configure(state="disabled", text="Downloading…")
+
+        def worker():
+            update_dir = os.path.join(self.data_dir, "updates")
+            filename = os.path.basename(str(asset["name"]))
+            installer_path = os.path.join(update_dir, filename)
+            temporary_path = installer_path + ".download"
+            expected_size = int(asset.get("size") or 0)
+            expected_digest = str(asset["digest"]).split(":", 1)[1].lower()
+            try:
+                os.makedirs(update_dir, exist_ok=True)
+                request = urllib.request.Request(
+                    asset["browser_download_url"],
+                    headers={
+                        "Accept": "application/octet-stream",
+                        "User-Agent": f"{self.APP_NAME}/{self.APP_VERSION_FULL}",
+                    },
+                )
+                digest = hashlib.sha256()
+                downloaded = 0
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    with open(temporary_path, "wb") as installer_file:
+                        while True:
+                            chunk = response.read(1024 * 256)
+                            if not chunk:
+                                break
+                            installer_file.write(chunk)
+                            digest.update(chunk)
+                            downloaded += len(chunk)
+                            if expected_size:
+                                progress = min(0.94, downloaded / expected_size * 0.94)
+                                self.ui_queue.put(
+                                    lambda value=progress: self._set_progress(value)
+                                )
+                if expected_size and downloaded != expected_size:
+                    raise ValueError("The downloaded installer size did not match.")
+                if digest.hexdigest().lower() != expected_digest:
+                    raise ValueError("The downloaded installer checksum did not match.")
+                os.replace(temporary_path, installer_path)
+                self.ui_queue.put(
+                    lambda: self._launch_app_update(installer_path, version)
+                )
+            except (OSError, ValueError, urllib.error.URLError) as error:
+                try:
+                    if os.path.exists(temporary_path):
+                        os.remove(temporary_path)
+                except OSError:
+                    pass
+                self.ui_queue.put(
+                    lambda problem=error: self._app_update_download_failed(problem)
+                )
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _launch_app_update(self, installer_path, version):
+        try:
+            subprocess.Popen(
+                [
+                    installer_path,
+                    "/SILENT",
+                    "/SUPPRESSMSGBOXES",
+                    "/NORESTART",
+                    "/CLOSEAPPLICATIONS",
+                ],
+                cwd=os.path.dirname(installer_path),
+            )
+        except OSError as error:
+            self._app_update_download_failed(error)
+            return
+        self.active_operation = None
+        self._set_progress(1.0, animate=False)
+        self.operation_label.configure(text="Installer started", text_color=self.GREEN)
+        self.top_status.configure(text="  ●  Updating  ", text_color=self.GREEN)
+        self.show_toast(f"Installing {self.APP_NAME} v{version}")
+        self.after(900, self.destroy)
+
+    def _app_update_download_failed(self, error):
+        self.active_operation = None
+        self.app_update_button.configure(state="normal", text="Check & update")
+        self.operation_label.configure(text="Update failed", text_color=self.RED)
+        self.top_status.configure(text="  ●  Update failed  ", text_color=self.RED)
+        self._set_progress(0, animate=False)
+        self._schedule_status_reset()
+        messagebox.showerror(
+            "Application updates",
+            f"The update could not be downloaded safely:\n{error}",
+        )
 
     def _show_app_update_error(self, error):
-        self.app_update_button.configure(state="normal", text="Check now")
+        self.app_update_button.configure(state="normal", text="Check & update")
         messagebox.showerror("Application updates", f"Could not check for updates:\n{error}")
 
     # ---------- version status ----------
@@ -1892,11 +2094,30 @@ Official documentation
         except OSError as error:
             messagebox.showerror("Open logs folder", str(error))
 
-    def change_scale(self, scale):
-        ctk.set_widget_scaling(int(scale.rstrip("%")) / 100)
-        self.settings["interface_scale"] = scale
+    def change_accessibility_mode(self, mode):
+        if mode == self.accessibility_mode:
+            return
+        self.settings["accessibility_mode"] = mode
         self._save_settings()
-        self.show_toast(f"Interface scale set to {scale}")
+        if messagebox.askyesno(
+            "Restart to apply",
+            f"{mode} mode is ready.\n\nRestart {self.APP_NAME} now to apply it?",
+        ):
+            self._restart_application()
+        else:
+            self.show_toast(f"{mode} mode will apply next time")
+
+    def _restart_application(self):
+        if getattr(sys, "frozen", False):
+            command = [sys.executable]
+        else:
+            command = [sys.executable, os.path.abspath(__file__)]
+        try:
+            subprocess.Popen(command, cwd=os.path.dirname(os.path.abspath(command[-1])))
+        except OSError as error:
+            messagebox.showerror("Restart failed", str(error))
+            return
+        self.destroy()
 
     def toggle_animations(self):
         self.animations_enabled = bool(self.motion_switch.get())
@@ -1973,6 +2194,12 @@ Official documentation
             settings["interface_scale"] = "100%"
         if settings["notification_duration"] not in self.NOTIFICATION_DURATIONS:
             settings["notification_duration"] = "3 seconds"
+        if settings["accessibility_mode"] not in {
+            "Standard",
+            "Large text",
+            "High contrast",
+        }:
+            settings["accessibility_mode"] = "Standard"
         settings["animations_enabled"] = bool(settings["animations_enabled"])
         settings["always_on_top"] = bool(settings["always_on_top"])
         return settings

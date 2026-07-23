@@ -226,3 +226,5 @@ installer-output/
 logs/
 settings.json
 *.zip
+*.pfx
+*.p12
