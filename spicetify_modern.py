@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.request
 import webbrowser
+import zipfile
 from datetime import datetime
 from tkinter import filedialog, messagebox
 
@@ -29,8 +30,8 @@ ctk.set_default_color_theme("blue")
 
 class SpicetifyManager(ctk.CTk):
     APP_NAME = "Spicetify Manager"
-    APP_VERSION = "2.3.0"
-    APP_VERSION_FULL = "2.3.0"
+    APP_VERSION = "2.3.1"
+    APP_VERSION_FULL = "2.3.1"
     UI_FONT = "Verdana"
     MONO_FONT = "Consolas"
     PROGRESS_WIDTH = 220
@@ -38,6 +39,7 @@ class SpicetifyManager(ctk.CTk):
         "https://raw.githubusercontent.com/spicetify/cli/main/install.ps1"
     )
     SPOTIFY_DOWNLOAD_URL = "https://www.spotify.com/download/windows/"
+    MARKETPLACE_REPOSITORY = "spicetify/marketplace"
     BG = "#090D18"
     SIDEBAR = "#0D1322"
     CARD = "#111A2D"
@@ -131,6 +133,8 @@ class SpicetifyManager(ctk.CTk):
         self.nav_animation_generation = 0
         self.progress_collapse_generation = 0
         self.status_reset_job = None
+        self.marketplace_release = None
+        self.marketplace_update_context = None
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -147,7 +151,7 @@ class SpicetifyManager(ctk.CTk):
                 lambda: self._show_version_result("2.44.0", "2.45.0"),
             )
         else:
-            self.check_for_updates()
+            self.check_all_updates()
 
     # ---------- layout ----------
 
@@ -329,50 +333,98 @@ class SpicetifyManager(ctk.CTk):
 
         hero = ctk.CTkFrame(
             page,
-            height=138,
+            height=118,
             corner_radius=20,
             fg_color=self.CARD,
             border_width=1,
             border_color=self.BORDER,
         )
-        hero.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 16))
+        hero.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
         hero.grid_propagate(False)
-        hero.grid_columnconfigure(0, weight=1)
+        hero.grid_columnconfigure((0, 1), weight=1, uniform="status")
 
         ctk.CTkLabel(
             hero,
             text="SPICETIFY STATUS",
             text_color=self.MUTED,
             font=ctk.CTkFont(self.UI_FONT, 11, "bold"),
-        ).grid(row=0, column=0, sticky="w", padx=24, pady=(20, 0))
+        ).grid(row=0, column=0, sticky="w", padx=(22, 12), pady=(14, 0))
         self.hero_title = ctk.CTkLabel(
             hero,
             text="Checking your installation…",
             text_color=self.TEXT,
             font=ctk.CTkFont(self.UI_FONT, 23, "bold"),
         )
-        self.hero_title.grid(row=1, column=0, sticky="w", padx=24, pady=(3, 0))
+        self.hero_title.grid(
+            row=1, column=0, sticky="w", padx=(22, 12), pady=(2, 0)
+        )
         self.hero_detail = ctk.CTkLabel(
             hero,
             text="This only takes a moment.",
             text_color=self.MUTED,
             font=ctk.CTkFont(self.UI_FONT, 12),
         )
-        self.hero_detail.grid(row=2, column=0, sticky="w", padx=24, pady=(2, 18))
-        self.check_button = ctk.CTkButton(
+        self.hero_detail.grid(
+            row=2, column=0, sticky="w", padx=(22, 12), pady=(1, 13)
+        )
+
+        ctk.CTkLabel(
             hero,
-            text="Check again",
-            width=122,
-            height=38,
-            corner_radius=12,
+            text="MARKETPLACE STATUS",
+            text_color=self.MUTED,
+            font=ctk.CTkFont(self.UI_FONT, 11, "bold"),
+        ).grid(row=0, column=1, sticky="w", padx=12, pady=(14, 0))
+        self.marketplace_title = ctk.CTkLabel(
+            hero,
+            text="Checking Marketplace…",
+            text_color=self.TEXT,
+            font=ctk.CTkFont(self.UI_FONT, 18, "bold"),
+        )
+        self.marketplace_title.grid(
+            row=1, column=1, sticky="w", padx=12, pady=(2, 0)
+        )
+        self.marketplace_detail = ctk.CTkLabel(
+            hero,
+            text="Looking for the installed version.",
+            text_color=self.MUTED,
+            font=ctk.CTkFont(self.UI_FONT, 11),
+        )
+        self.marketplace_detail.grid(
+            row=2, column=1, sticky="w", padx=12, pady=(1, 13)
+        )
+
+        hero_buttons = ctk.CTkFrame(hero, fg_color="transparent")
+        hero_buttons.grid(row=0, column=2, rowspan=3, padx=(12, 22))
+        self.check_button = ctk.CTkButton(
+            hero_buttons,
+            text="Check all",
+            width=118,
+            height=34,
+            corner_radius=10,
             fg_color=self.CARD_HOVER,
             hover_color=self.BORDER,
             border_width=1,
             border_color=self.BORDER,
             font=ctk.CTkFont(self.UI_FONT, 12, "bold"),
-            command=self.check_for_updates,
+            command=self.check_all_updates,
         )
-        self.check_button.grid(row=0, column=1, rowspan=3, padx=24)
+        self.check_button.grid(row=0, column=0, pady=(0, 6))
+        self.marketplace_button = ctk.CTkButton(
+            hero_buttons,
+            text="Checking…",
+            width=118,
+            height=34,
+            corner_radius=10,
+            fg_color=self.CARD_HOVER,
+            hover_color=self.GREEN,
+            border_width=1,
+            border_color=self.BORDER,
+            text_color=self.MUTED,
+            state="disabled",
+            font=ctk.CTkFont(self.UI_FONT, 11, "bold"),
+            command=self.update_marketplace,
+        )
+        self.marketplace_button.grid(row=1, column=0)
 
         actions = (
             ("Update theme", "Hot-reload active theme changes", self.BLUE, self.run_update),
@@ -387,7 +439,7 @@ class SpicetifyManager(ctk.CTk):
                 column=index % 2,
                 sticky="ew",
                 padx=(0, 8) if index % 2 == 0 else (8, 0),
-                pady=(0, 16) if index < 2 else 0,
+                pady=(0, 10) if index < 2 else 0,
             )
             if index >= 2:
                 card.grid_configure(row=2)
@@ -400,7 +452,7 @@ class SpicetifyManager(ctk.CTk):
             border_color=self.BORDER,
         )
         console_card.grid(
-            row=3, column=0, columnspan=2, sticky="nsew", pady=(16, 0)
+            row=3, column=0, columnspan=2, sticky="nsew", pady=(12, 0)
         )
         console_card.grid_columnconfigure(0, weight=1)
         console_card.grid_rowconfigure(2, weight=1)
@@ -504,8 +556,8 @@ class SpicetifyManager(ctk.CTk):
     def _action_card(self, parent, title, detail, accent, command):
         card = ctk.CTkFrame(
             parent,
-            height=84,
-            corner_radius=18,
+            height=72,
+            corner_radius=16,
             fg_color=self.CARD,
             border_width=1,
             border_color=self.BORDER,
@@ -515,35 +567,35 @@ class SpicetifyManager(ctk.CTk):
         ctk.CTkLabel(
             card,
             text="●",
-            width=34,
+            width=30,
             text_color=accent,
-            font=ctk.CTkFont(size=21),
-        ).grid(row=0, column=0, rowspan=2, padx=(17, 7))
+            font=ctk.CTkFont(size=18),
+        ).grid(row=0, column=0, rowspan=2, padx=(15, 6))
         ctk.CTkLabel(
             card,
             text=title,
             text_color=self.TEXT,
             font=ctk.CTkFont(self.UI_FONT, 13, "bold"),
-        ).grid(row=0, column=1, sticky="sw", pady=(16, 0))
+        ).grid(row=0, column=1, sticky="sw", pady=(10, 0))
         ctk.CTkLabel(
             card,
             text=detail,
             text_color=self.MUTED,
             font=ctk.CTkFont(self.UI_FONT, 11),
-        ).grid(row=1, column=1, sticky="nw", pady=(0, 15))
+        ).grid(row=1, column=1, sticky="nw", pady=(0, 9))
         ctk.CTkButton(
             card,
             text="→",
-            width=38,
-            height=38,
-            corner_radius=12,
+            width=34,
+            height=34,
+            corner_radius=10,
             fg_color=self.CARD_HOVER,
             hover_color=accent,
             border_width=1,
             border_color=self.BORDER,
             font=ctk.CTkFont(size=18, weight="bold"),
             command=command,
-        ).grid(row=0, column=2, rowspan=2, padx=18)
+        ).grid(row=0, column=2, rowspan=2, padx=15)
         return card
 
     def _create_logs_page(self):
@@ -1716,6 +1768,371 @@ Official documentation
         self.app_update_button.configure(state="normal", text="Check & update")
         messagebox.showerror("Application updates", f"Could not check for updates:\n{error}")
 
+    # ---------- Marketplace status and updates ----------
+
+    def check_all_updates(self):
+        self.check_for_updates()
+        self.check_marketplace_updates()
+
+    def _marketplace_userdata_path(self):
+        try:
+            result = subprocess.run(
+                ["spicetify", "path", "userdata"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=10,
+                startupinfo=self._startup_info(),
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return os.path.abspath(strip_ansi(result.stdout).strip().strip('"'))
+        except (OSError, subprocess.SubprocessError):
+            pass
+        appdata = os.environ.get(
+            "APPDATA", os.path.join(os.path.expanduser("~"), "AppData", "Roaming")
+        )
+        return os.path.join(appdata, "spicetify")
+
+    def _marketplace_install_path(self):
+        return os.path.join(
+            self._marketplace_userdata_path(), "CustomApps", "marketplace"
+        )
+
+    def _installed_marketplace_version(self):
+        extension_path = os.path.join(
+            self._marketplace_install_path(), "extension.js"
+        )
+        try:
+            with open(extension_path, "r", encoding="utf-8", errors="replace") as source:
+                content = source.read(2 * 1024 * 1024)
+        except OSError:
+            return None
+        patterns = (
+            r"Initializing Spicetify Marketplace v([0-9A-Za-z._-]+)",
+            r'Marketplace=\{.*?version:"([^"]+)"',
+        )
+        for pattern in patterns:
+            match = re.search(pattern, content, flags=re.DOTALL)
+            if match:
+                return match.group(1).removeprefix("v")
+        return "unknown"
+
+    @classmethod
+    def _get_marketplace_release(cls):
+        request = urllib.request.Request(
+            f"https://api.github.com/repos/{cls.MARKETPLACE_REPOSITORY}/releases/latest",
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": f"{cls.APP_NAME}/{cls.APP_VERSION_FULL}",
+            },
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            release = json.load(response)
+        release["_repository"] = cls.MARKETPLACE_REPOSITORY
+        return release
+
+    @staticmethod
+    def _marketplace_asset(release):
+        repository = str(release.get("_repository", "")).strip()
+        expected_prefix = f"https://github.com/{repository}/releases/download/"
+        for asset in release.get("assets", []):
+            name = str(asset.get("name", ""))
+            url = str(asset.get("browser_download_url", ""))
+            digest = str(asset.get("digest", ""))
+            if (
+                name.lower() == "marketplace.zip"
+                and url.startswith(expected_prefix)
+                and re.fullmatch(r"sha256:[0-9a-fA-F]{64}", digest)
+            ):
+                return asset
+        return None
+
+    def check_marketplace_updates(self):
+        self.marketplace_button.configure(
+            state="disabled", text="Checking…", text_color=self.MUTED
+        )
+        self.marketplace_title.configure(text="Checking Marketplace…")
+        self.marketplace_detail.configure(text="Looking for the installed version.")
+
+        def worker():
+            installed = self._installed_marketplace_version()
+            try:
+                release = self._get_marketplace_release()
+            except (OSError, ValueError, urllib.error.URLError):
+                release = None
+            self.ui_queue.put(
+                lambda current=installed, latest=release: self._show_marketplace_status(
+                    current, latest
+                )
+            )
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _show_marketplace_status(self, installed, release):
+        self.marketplace_release = release
+        self.check_button.configure(state="normal", text="Check all")
+        latest = ""
+        if release:
+            latest = str(release.get("tag_name", "")).removeprefix("v")
+
+        if not installed:
+            self.marketplace_title.configure(text="Marketplace is not installed")
+            self.marketplace_detail.configure(
+                text=f"Marketplace v{latest} is available."
+                if latest
+                else "Install the official Marketplace when the check is available."
+            )
+            self.marketplace_button.configure(
+                state="normal" if self._marketplace_asset(release or {}) else "disabled",
+                text="Install" if latest else "Unavailable",
+                text_color=self.TEXT if latest else self.MUTED,
+                fg_color=self.GREEN if latest else self.CARD_HOVER,
+                hover_color=self.GREEN_HOVER,
+                border_color=self.GREEN if latest else self.BORDER,
+            )
+            return
+
+        if not release or not latest:
+            version_text = (
+                f"v{installed}" if installed != "unknown" else "version unknown"
+            )
+            self.marketplace_title.configure(text="Marketplace is installed")
+            self.marketplace_detail.configure(
+                text=f"Installed {version_text}. The online check is unavailable."
+            )
+            self.marketplace_button.configure(
+                state="normal",
+                text="Retry",
+                text_color=self.TEXT,
+                fg_color=self.CARD_HOVER,
+                hover_color=self.BORDER,
+                border_color=self.BORDER,
+            )
+            return
+
+        try:
+            update_available = (
+                installed == "unknown" or Version(latest) > Version(installed)
+            )
+        except InvalidVersion:
+            update_available = installed != latest
+
+        if update_available:
+            self.marketplace_title.configure(text="Marketplace update available")
+            current_text = (
+                f"v{installed}" if installed != "unknown" else "Unknown version"
+            )
+            self.marketplace_detail.configure(
+                text=f"{current_text} → v{latest}"
+            )
+            asset_available = bool(self._marketplace_asset(release))
+            self.marketplace_button.configure(
+                state="normal" if asset_available else "disabled",
+                text="Update" if asset_available else "Unavailable",
+                text_color=self.TEXT if asset_available else self.MUTED,
+                fg_color=self.ORANGE if asset_available else self.CARD_HOVER,
+                hover_color=self.RED,
+                border_color=self.ORANGE if asset_available else self.BORDER,
+            )
+        else:
+            self.marketplace_title.configure(text="Marketplace is up to date")
+            self.marketplace_detail.configure(
+                text=f"Marketplace v{installed} is ready to use."
+            )
+            self.marketplace_button.configure(
+                state="disabled",
+                text="Up to date",
+                text_color=self.GREEN,
+                fg_color=self.CARD_HOVER,
+                border_color=self.GREEN,
+            )
+
+    def update_marketplace(self):
+        release = self.marketplace_release
+        asset = self._marketplace_asset(release or {})
+        if not release or not asset:
+            self.check_marketplace_updates()
+            return
+        if self.active_operation:
+            self.show_toast("Another operation is already running", self.ORANGE)
+            return
+        if not self.get_spicetify_version():
+            messagebox.showwarning(
+                "Marketplace",
+                "Install Spicetify before installing its Marketplace.",
+            )
+            return
+
+        installed = self._installed_marketplace_version()
+        action = "Update" if installed else "Install"
+        if not messagebox.askyesno(
+            f"{action} Marketplace",
+            f"{action} the official Spicetify Marketplace?\n\n"
+            "The Marketplace app files will be replaced, then Spicetify will "
+            "apply the custom app. A rollback copy is kept until this finishes.",
+        ):
+            return
+
+        self.active_operation = "Downloading Marketplace"
+        self._cancel_status_reset()
+        self._show_progress()
+        self._set_progress(0, animate=False)
+        self.operation_label.configure(
+            text="Downloading Marketplace…", text_color=self.TEXT
+        )
+        self.top_status.configure(
+            text="  ◐  Downloading Marketplace  ", text_color=self.BLUE
+        )
+        self.marketplace_button.configure(state="disabled", text="Downloading…")
+
+        def worker():
+            work_dir = tempfile.mkdtemp(
+                prefix="marketplace-update-", dir=self.data_dir
+            )
+            archive_path = os.path.join(work_dir, "marketplace.zip")
+            extract_root = os.path.join(work_dir, "extracted")
+            target = self._marketplace_install_path()
+            backup = os.path.join(work_dir, "backup") if os.path.isdir(target) else None
+            self.marketplace_update_context = {
+                "work_dir": work_dir,
+                "target": target,
+                "backup": None,
+                "files_replaced": False,
+            }
+            try:
+                self._download_marketplace_archive(asset, archive_path)
+                self._safe_extract_marketplace(archive_path, extract_root)
+                source = os.path.join(extract_root, "marketplace-dist")
+                required = ("extension.js", "index.js", "manifest.json")
+                if not all(os.path.isfile(os.path.join(source, name)) for name in required):
+                    raise ValueError("The Marketplace archive is missing required files.")
+                parent = os.path.dirname(target)
+                if (
+                    os.path.basename(target).lower() != "marketplace"
+                    or os.path.basename(parent).lower() != "customapps"
+                ):
+                    raise ValueError("The Marketplace install path is not safe.")
+                os.makedirs(parent, exist_ok=True)
+                if backup:
+                    shutil.copytree(target, backup)
+                    self.marketplace_update_context["backup"] = backup
+                self.marketplace_update_context["files_replaced"] = True
+                if os.path.isdir(target):
+                    shutil.rmtree(target)
+                shutil.copytree(source, target)
+                self.ui_queue.put(self._configure_marketplace_update)
+            except (OSError, ValueError, zipfile.BadZipFile, urllib.error.URLError) as error:
+                self.ui_queue.put(
+                    lambda problem=error: self._marketplace_update_failed(problem)
+                )
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _download_marketplace_archive(self, asset, archive_path):
+        expected_size = int(asset.get("size") or 0)
+        expected_digest = str(asset["digest"]).split(":", 1)[1].lower()
+        request = urllib.request.Request(
+            asset["browser_download_url"],
+            headers={
+                "Accept": "application/octet-stream",
+                "User-Agent": f"{self.APP_NAME}/{self.APP_VERSION_FULL}",
+            },
+        )
+        digest = hashlib.sha256()
+        downloaded = 0
+        with urllib.request.urlopen(request, timeout=30) as response:
+            with open(archive_path, "wb") as archive:
+                while True:
+                    chunk = response.read(1024 * 256)
+                    if not chunk:
+                        break
+                    archive.write(chunk)
+                    digest.update(chunk)
+                    downloaded += len(chunk)
+                    if expected_size:
+                        progress = min(0.72, downloaded / expected_size * 0.72)
+                        self.ui_queue.put(
+                            lambda value=progress: self._set_progress(value)
+                        )
+        if expected_size and downloaded != expected_size:
+            raise ValueError("The Marketplace download size did not match.")
+        if digest.hexdigest().lower() != expected_digest:
+            raise ValueError("The Marketplace download checksum did not match.")
+
+    @staticmethod
+    def _safe_extract_marketplace(archive_path, extract_root):
+        os.makedirs(extract_root, exist_ok=True)
+        root = os.path.abspath(extract_root)
+        with zipfile.ZipFile(archive_path) as archive:
+            for member in archive.infolist():
+                destination = os.path.abspath(os.path.join(root, member.filename))
+                if os.path.commonpath((root, destination)) != root:
+                    raise ValueError("The Marketplace archive contains an unsafe path.")
+            archive.extractall(root)
+
+    def _configure_marketplace_update(self):
+        self.active_operation = None
+        self._set_progress(0.78)
+        self.run_operation(
+            "Configuring Marketplace",
+            ["spicetify", "config", "custom_apps", "marketplace"],
+            on_success=self._apply_marketplace_update,
+            on_failure=self._rollback_marketplace_update,
+        )
+
+    def _apply_marketplace_update(self):
+        self._set_progress(0.9)
+        self.run_operation(
+            "Applying Marketplace",
+            ["spicetify", "apply"],
+            on_success=self._marketplace_update_complete,
+            on_failure=self._rollback_marketplace_update,
+        )
+
+    def _marketplace_update_complete(self):
+        context = self.marketplace_update_context
+        self.marketplace_update_context = None
+        if context:
+            shutil.rmtree(context["work_dir"], ignore_errors=True)
+        self.show_toast("Marketplace is ready", self.GREEN)
+        self.check_marketplace_updates()
+
+    def _rollback_marketplace_update(self):
+        context = self.marketplace_update_context
+        self.marketplace_update_context = None
+        if not context:
+            return
+        try:
+            target = context["target"]
+            backup = context["backup"]
+            if context.get("files_replaced") and os.path.isdir(target):
+                shutil.rmtree(target)
+            if backup and os.path.isdir(backup):
+                shutil.copytree(backup, target)
+            self._write_output("Marketplace files were rolled back safely.\n")
+        except OSError as error:
+            self._write_output(f"Marketplace rollback failed: {error}\n")
+            messagebox.showwarning(
+                "Marketplace rollback",
+                f"The previous Marketplace files could not be fully restored:\n{error}",
+            )
+        finally:
+            shutil.rmtree(context["work_dir"], ignore_errors=True)
+            self.check_marketplace_updates()
+
+    def _marketplace_update_failed(self, error):
+        self.active_operation = None
+        self._rollback_marketplace_update()
+        self._set_progress(0, animate=False)
+        self.operation_label.configure(text="Update failed", text_color=self.RED)
+        self.top_status.configure(text="  ●  Update failed  ", text_color=self.RED)
+        self._schedule_status_reset()
+        messagebox.showerror(
+            "Marketplace",
+            f"The Marketplace could not be installed safely:\n{error}",
+        )
+
     # ---------- version status ----------
 
     def get_spicetify_version(self):
@@ -1764,7 +2181,7 @@ Official documentation
 
     def _show_version_result(self, current, latest):
         self._stop_spinner()
-        self.check_button.configure(state="normal", text="Check again")
+        self.check_button.configure(state="normal", text="Check all")
         if not current:
             self.hero_title.configure(text="Spicetify was not found")
             self.hero_detail.configure(
@@ -1840,6 +2257,7 @@ Official documentation
         command,
         display_command=None,
         on_success=None,
+        on_failure=None,
         on_finish=None,
     ):
         if self.active_operation:
@@ -1891,7 +2309,7 @@ Official documentation
                 self.active_process = None
                 self.ui_queue.put(
                     lambda code=return_code, name=label: self._operation_finished(
-                        name, code, on_success, on_finish
+                        name, code, on_success, on_failure, on_finish
                     )
                 )
 
@@ -1905,7 +2323,12 @@ Official documentation
             self.operation_label.configure(text="Cancelling…", text_color=self.ORANGE)
 
     def _operation_finished(
-        self, label, return_code, on_success=None, on_finish=None
+        self,
+        label,
+        return_code,
+        on_success=None,
+        on_failure=None,
+        on_finish=None,
     ):
         self.active_operation = None
         self.run_button.configure(state="normal")
@@ -1939,6 +2362,11 @@ Official documentation
             self._schedule_status_reset()
             self._write_output(f"{label} failed with exit code {return_code}.\n")
             self.show_toast(f"{label} failed", self.RED)
+            if on_failure:
+                try:
+                    on_failure()
+                except Exception as error:
+                    self._write_output(f"Rollback step failed: {error}\n")
         if on_finish:
             try:
                 on_finish()
