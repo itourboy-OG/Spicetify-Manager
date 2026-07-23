@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Spicetify Manager project files
+!SpicetifyManager.spec
+.vs/
+.vscode/
+release/
+logs/
+settings.json
+*.zip
