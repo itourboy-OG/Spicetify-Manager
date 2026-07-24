@@ -27,9 +27,6 @@ Download the newest `Setup.exe`, run it, and keep the desktop-shortcut option
 selected. The installer copies every required runtime file, adds Start Menu and
 desktop shortcuts, and includes a standard Windows uninstaller.
 
-Portable ZIP builds may also be provided. Keep every extracted file together;
-the EXE depends on the bundled runtime folder beside it.
-
 Windows may show a Microsoft Defender SmartScreen warning for unsigned community
 applications. Review the release source and build instructions before running
 software you download.
