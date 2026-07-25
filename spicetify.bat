@@ -10,14 +10,14 @@ if not exist "%PYTHON_EXE%" (
     if errorlevel 1 goto :setup_error
 )
 
-"%PYTHON_EXE%" -c "import customtkinter" >nul 2>&1
+"%PYTHON_EXE%" -c "import PySide6" >nul 2>&1
 if errorlevel 1 (
-    echo Installing interface components...
+    echo Installing Qt interface components...
     "%PYTHON_EXE%" -m pip install --disable-pip-version-check -r "%~dp0requirements.txt"
     if errorlevel 1 goto :setup_error
 )
 
-"%PYTHON_EXE%" "%~dp0spicetify_modern.py"
+"%PYTHON_EXE%" "%~dp0spicetify_qt.py"
 if errorlevel 1 (
     echo.
     echo Spicetify Manager exited with an error.

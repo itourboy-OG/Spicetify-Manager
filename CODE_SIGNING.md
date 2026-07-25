@@ -27,7 +27,7 @@ $env:SIGN_TIMESTAMP_URL = "http://timestamp.digicert.com"
 The script signs and verifies:
 
 - `dist\Spicetify Manager\Spicetify Manager.exe`
-- `installer-output\Spicetify-Manager-v2.3.1-Setup.exe`
+- `installer-output\Spicetify-Manager-v2.4.0-Setup.exe`
 
 Never commit a `.pfx`, `.p12`, private key, certificate password, or other
 signing secret. Those certificate file extensions are excluded by `.gitignore`.

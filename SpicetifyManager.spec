@@ -1,17 +1,12 @@
-from PyInstaller.utils.hooks import collect_data_files
-
-
-datas = collect_data_files("customtkinter")
-datas += [
-    ("icon.ico", "."),
-    ("release_config.json", "."),
-]
-
 a = Analysis(
-    ["spicetify_modern.py"],
+    ["spicetify_qt.py"],
     pathex=[],
     binaries=[],
-    datas=datas,
+    datas=[
+        ("icon.ico", "."),
+        ("release_config.json", "."),
+        ("qml", "qml"),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
