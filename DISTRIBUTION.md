@@ -1,22 +1,22 @@
-# Spicetify Manager v2.3.1 distribution guide
+# Spicetify Manager v2.4.0 distribution guide
 
 ## What can be shared now
 
 Run `build-installer.bat`. The finished Windows installer is created at:
 
-`installer-output\Spicetify-Manager-v2.3.1-Setup.exe`
+`installer-output\Spicetify-Manager-v2.4.0-Setup.exe`
 
 The installer copies the complete application, creates Start Menu entries,
 offers a desktop shortcut by default, and registers a Windows uninstaller.
-Recipients do not need Python, CustomTkinter, or Pillow installed.
+Recipients do not need Python or PySide6 installed.
 
 For a portable build, run `build-release.bat`. The application is created at:
 
 `dist\Spicetify Manager\Spicetify Manager.exe`
 
 Share the entire `Spicetify Manager` folder, preferably as a ZIP file. The
-official CustomTkinter packaging guidance uses a folder-based build because the
-UI library includes required fonts and theme data.
+folder includes the Qt runtime, QML modules, and every required Python runtime
+file.
 
 Do not share the portable EXE by itself. It requires the adjacent `_internal`
 folder, which is why the installer is the recommended download.
@@ -29,12 +29,13 @@ folder, which is why the installer is the recommended download.
    `"github_repo": "itourboy-OG/Spicetify-Manager"`
 
 3. Run `build-installer.bat` again.
-4. On GitHub, create a release tagged with a semantic version such as `v2.3.1`.
+4. On GitHub, create a release tagged with a semantic version such as `v2.4.0`.
 5. Upload the new ZIP or installer to that release.
 
 The Settings page will compare the bundled app version with the latest GitHub
-Release. When a newer release exists, it offers to open the official release
-page for downloading.
+Release. When a newer release includes a verified `Setup.exe`, the app can
+download it, validate its published size and SHA-256 digest when available, and
+launch the installer automatically.
 
 ## Recommended public release process
 
